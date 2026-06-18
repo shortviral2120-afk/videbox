@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   DndContext,
   DragOverlay,
@@ -14,27 +15,20 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { createClient } from "@/lib/supabase/client";
-import type { Cliente, Cronograma, FaseCronograma } from "@/lib/types";
+import type { FaseServico, Servico } from "@/lib/types";
 import { PageHeader } from "@/components/page-header";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Pencil, Trash2 } from "lucide-react";
-import { CronogramaFormDialog } from "./cronograma-form-dialog";
-import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
+import { MonthCalendar } from "@/components/month-calendar";
 import { formatDate, cn } from "@/lib/utils";
-import { fasesCronograma, prioridadeColor } from "@/lib/status-styles";
+import { fasesServico, prioridadeColor } from "@/lib/status-styles";
 import { toast } from "sonner";
 
 export function CronogramaClient() {
-  const [items, setItems] = useState<Cronograma[]>([]);
-  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [servicos, setServicos] = useState<Servico[]>([]);
   const [loading, setLoading] = useState(true);
-  const [formOpen, setFormOpen] = useState(false);
-  const [editing, setEditing] = useState<Cronograma | null>(null);
-  const [deleting, setDeleting] = useState<Cronograma | null>(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -43,36 +37,17 @@ export function CronogramaClient() {
   async function load() {
     setLoading(true);
     const supabase = createClient();
-    const [croRes, cliRes] = await Promise.all([
-      supabase
-        .from("cronograma")
-        .select("*, clientes(nome)")
-        .order("created_at", { ascending: false }),
-      supabase.from("clientes").select("*").order("nome"),
-    ]);
-    if (croRes.data) setItems(croRes.data as unknown as Cronograma[]);
-    if (cliRes.data) setClientes(cliRes.data as Cliente[]);
+    const { data } = await supabase
+      .from("servicos")
+      .select("*, clientes(nome)")
+      .order("created_at", { ascending: false });
+    if (data) setServicos(data as unknown as Servico[]);
     setLoading(false);
   }
 
   useEffect(() => {
     load();
   }, []);
-
-  async function handleDelete() {
-    if (!deleting) return;
-    setDeleteLoading(true);
-    const supabase = createClient();
-    const { error } = await supabase.from("cronograma").delete().eq("id", deleting.id);
-    setDeleteLoading(false);
-    if (error) {
-      toast.error("Erro ao excluir serviço.");
-      return;
-    }
-    toast.success("Serviço excluído.");
-    setDeleting(null);
-    load();
-  }
 
   function handleDragStart(event: DragStartEvent) {
     setActiveId(String(event.active.id));
@@ -83,119 +58,129 @@ export function CronogramaClient() {
     const { active, over } = event;
     if (!over) return;
 
-    const itemId = String(active.id);
-    const newFase = over.id as FaseCronograma;
-    const current = items.find((i) => i.id === itemId);
+    const servicoId = String(active.id);
+    const newFase = over.id as FaseServico;
+    const current = servicos.find((s) => s.id === servicoId);
     if (!current || current.fase === newFase) return;
 
     const previousFase = current.fase;
-    setItems((prev) =>
-      prev.map((i) => (i.id === itemId ? { ...i, fase: newFase } : i))
+    setServicos((prev) =>
+      prev.map((s) => (s.id === servicoId ? { ...s, fase: newFase } : s))
     );
 
     const supabase = createClient();
     const { error } = await supabase
-      .from("cronograma")
-      .update({ fase: newFase })
-      .eq("id", itemId);
+      .from("servicos")
+      .update({ fase: newFase, updated_at: new Date().toISOString() })
+      .eq("id", servicoId);
 
     if (error) {
-      setItems((prev) =>
-        prev.map((i) => (i.id === itemId ? { ...i, fase: previousFase } : i))
+      setServicos((prev) =>
+        prev.map((s) => (s.id === servicoId ? { ...s, fase: previousFase } : s))
       );
       toast.error("Erro ao mover serviço.");
       return;
     }
 
+    await supabase.from("servico_fase_historico").insert({ servico_id: servicoId, fase: newFase });
+
     toast.success("Serviço movido.");
   }
 
-  const activeItem = activeId ? items.find((i) => i.id === activeId) ?? null : null;
+  const activeServico = activeId ? servicos.find((s) => s.id === activeId) ?? null : null;
+
+  const events = servicos
+    .filter((s) => s.data_instalacao)
+    .map((s) => ({ date: s.data_instalacao as string, id: s.id }));
+
+  const servicosNoDia = selectedDate
+    ? servicos.filter((s) => s.data_instalacao === selectedDate)
+    : [];
 
   return (
     <>
-      <PageHeader
-        title="Cronograma de Serviços"
-        description="Acompanhe os serviços em andamento por fase"
-        action={
-          <Button
-            onClick={() => {
-              setEditing(null);
-              setFormOpen(true);
-            }}
-          >
-            <Plus className="h-4 w-4" />
-            Novo serviço
-          </Button>
-        }
-      />
+      <PageHeader title="Cronograma" description="Acompanhe o andamento dos serviços" />
 
-      {loading ? (
-        <div className="flex gap-4 overflow-x-auto kanban-scroll">
-          {fasesCronograma.map((fase) => (
-            <div key={fase} className="w-72 shrink-0 space-y-3">
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-24 w-full" />
-              <Skeleton className="h-24 w-full" />
+      <div className="grid grid-cols-1 lg:grid-cols-[60%_40%] gap-6">
+        <div>
+          {loading ? (
+            <div className="flex gap-4 overflow-x-auto kanban-scroll">
+              {fasesServico.map((fase) => (
+                <div key={fase} className="w-72 shrink-0 space-y-3">
+                  <Skeleton className="h-8 w-full" />
+                  <Skeleton className="h-24 w-full" />
+                  <Skeleton className="h-24 w-full" />
+                </div>
+              ))}
             </div>
-          ))}
+          ) : (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            >
+              <div className="flex gap-4 overflow-x-auto kanban-scroll pb-2">
+                {fasesServico.map((fase) => (
+                  <KanbanColumn
+                    key={fase}
+                    fase={fase}
+                    servicos={servicos.filter((s) => s.fase === fase)}
+                  />
+                ))}
+              </div>
+              <DragOverlay>
+                {activeServico ? <ServicoCardContent servico={activeServico} /> : null}
+              </DragOverlay>
+            </DndContext>
+          )}
         </div>
-      ) : (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-        >
-          <div className="flex gap-4 overflow-x-auto kanban-scroll pb-2">
-            {fasesCronograma.map((fase) => (
-              <KanbanColumn
-                key={fase}
-                fase={fase}
-                items={items.filter((i) => i.fase === fase)}
-                onEdit={(item) => {
-                  setEditing(item);
-                  setFormOpen(true);
-                }}
-                onDelete={(item) => setDeleting(item)}
-              />
-            ))}
+
+        <div className="space-y-4">
+          <MonthCalendar events={events} onDayClick={setSelectedDate} selectedDate={selectedDate} />
+
+          <div className="rounded-lg border bg-card p-3 space-y-2">
+            {!selectedDate ? (
+              <p className="text-sm text-muted-foreground">
+                Selecione um dia no calendário para ver os serviços agendados.
+              </p>
+            ) : servicosNoDia.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Nenhum serviço agendado para este dia.
+              </p>
+            ) : (
+              servicosNoDia.map((s) => <ServicoDiaRow key={s.id} servico={s} />)
+            )}
           </div>
-          <DragOverlay>
-            {activeItem ? <CronogramaCardContent item={activeItem} /> : null}
-          </DragOverlay>
-        </DndContext>
-      )}
-
-      <CronogramaFormDialog
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        item={editing}
-        clientes={clientes}
-        onSaved={load}
-      />
-
-      <ConfirmDeleteDialog
-        open={!!deleting}
-        onOpenChange={(o) => !o && setDeleting(null)}
-        onConfirm={handleDelete}
-        itemLabel={deleting?.servico ?? undefined}
-        loading={deleteLoading}
-      />
+        </div>
+      </div>
     </>
+  );
+}
+
+function ServicoDiaRow({ servico }: { servico: Servico }) {
+  const router = useRouter();
+  return (
+    <button
+      type="button"
+      onClick={() => router.push(`/servicos/${servico.id}`)}
+      className="flex w-full items-center justify-between gap-2 rounded-md border bg-background p-2 text-left hover:bg-accent transition-colors"
+    >
+      <div>
+        <p className="text-sm font-semibold">{servico.clientes?.nome ?? "-"}</p>
+        <p className="text-xs text-muted-foreground">{servico.titulo}</p>
+      </div>
+      <Badge variant="secondary">{servico.fase}</Badge>
+    </button>
   );
 }
 
 function KanbanColumn({
   fase,
-  items,
-  onEdit,
-  onDelete,
+  servicos,
 }: {
-  fase: FaseCronograma;
-  items: Cronograma[];
-  onEdit: (item: Cronograma) => void;
-  onDelete: (item: Cronograma) => void;
+  fase: FaseServico;
+  servicos: Servico[];
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: fase });
 
@@ -209,98 +194,53 @@ function KanbanColumn({
     >
       <div className="flex items-center justify-between gap-2 border-b px-3 py-2">
         <span className="text-sm font-semibold">{fase}</span>
-        <Badge variant="secondary">{items.length}</Badge>
+        <Badge variant="secondary">{servicos.length}</Badge>
       </div>
       <div className="flex-1 space-y-2 p-2 overflow-y-auto max-h-[70vh]">
-        {items.length === 0 ? (
+        {servicos.length === 0 ? (
           <p className="p-4 text-center text-xs text-muted-foreground">Nenhum serviço</p>
         ) : (
-          items.map((item) => (
-            <CronogramaCard key={item.id} item={item} onEdit={onEdit} onDelete={onDelete} />
-          ))
+          servicos.map((servico) => <ServicoCard key={servico.id} servico={servico} />)
         )}
       </div>
     </div>
   );
 }
 
-function CronogramaCard({
-  item,
-  onEdit,
-  onDelete,
-}: {
-  item: Cronograma;
-  onEdit: (item: Cronograma) => void;
-  onDelete: (item: Cronograma) => void;
-}) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: item.id });
+function ServicoCard({ servico }: { servico: Servico }) {
+  const router = useRouter();
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: servico.id });
 
   return (
     <div
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      onClick={() => onEdit(item)}
+      onClick={() => router.push(`/servicos/${servico.id}`)}
       className={cn(
         "rounded-md border bg-background p-3 cursor-pointer transition-opacity",
         isDragging && "opacity-30"
       )}
     >
-      <CronogramaCardContent item={item} onEdit={onEdit} onDelete={onDelete} />
+      <ServicoCardContent servico={servico} />
     </div>
   );
 }
 
-function CronogramaCardContent({
-  item,
-  onEdit,
-  onDelete,
-}: {
-  item: Cronograma;
-  onEdit?: (item: Cronograma) => void;
-  onDelete?: (item: Cronograma) => void;
-}) {
+function ServicoCardContent({ servico }: { servico: Servico }) {
   return (
     <div className="space-y-2">
       <div className="flex items-start justify-between gap-2">
-        <p className="font-semibold text-sm">{item.clientes?.nome ?? "-"}</p>
-        <Badge variant="outline" className={prioridadeColor[item.prioridade]}>
-          {item.prioridade}
+        <p className="font-semibold text-sm">{servico.clientes?.nome ?? "-"}</p>
+        <Badge variant="outline" className={prioridadeColor[servico.prioridade]}>
+          {servico.prioridade}
         </Badge>
       </div>
-      <p className="text-sm text-muted-foreground">{item.servico || "-"}</p>
-      <p className="text-xs text-muted-foreground">
-        Previsão: {formatDate(item.previsao_conclusao)}
-      </p>
-      {(onEdit || onDelete) && (
-        <div className="flex justify-end gap-1">
-          {onEdit && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={(e) => {
-                e.stopPropagation();
-                onEdit(item);
-              }}
-            >
-              <Pencil className="h-3.5 w-3.5" />
-            </Button>
-          )}
-          {onDelete && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(item);
-              }}
-            >
-              <Trash2 className="h-3.5 w-3.5 text-destructive" />
-            </Button>
-          )}
-        </div>
+      <p className="text-sm text-muted-foreground">{servico.titulo || "-"}</p>
+      {servico.data_instalacao && (
+        <p className="text-xs text-muted-foreground">
+          Instalação: {formatDate(servico.data_instalacao)}
+        </p>
       )}
     </div>
   );

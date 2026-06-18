@@ -20,46 +20,85 @@ create table if not exists clientes (
 );
 
 -- =========================================================
--- CONTROLE DE PAGAMENTOS
+-- SERVIÇOS (módulo central: orçamento, fases, pagamentos)
 -- =========================================================
-create table if not exists pagamentos (
+create table if not exists servicos (
   id uuid primary key default gen_random_uuid(),
   cliente_id uuid not null references clientes(id) on delete cascade,
-  servico text,
-  data_servico date,
-  valor_total numeric(12,2) not null default 0,
-  valor_pago numeric(12,2) not null default 0,
-  data_vencimento date,
-  status text not null default 'Aguardando entrada' check (status in ('Em dia','Vencido','Quitado','Parcelado','Aguardando entrada')),
-  observacoes text,
-  created_at timestamptz not null default now()
-);
-
--- =========================================================
--- CRONOGRAMA DE SERVIÇOS
--- =========================================================
-create table if not exists cronograma (
-  id uuid primary key default gen_random_uuid(),
-  cliente_id uuid not null references clientes(id) on delete cascade,
-  servico text,
-  previsao_inicio date,
-  previsao_conclusao date,
-  fase text not null default 'Novo orçamento' check (fase in ('Novo orçamento','Aguardando material','Agendado','Em execução','Concluído')),
+  titulo text not null,
+  descricao text,
+  fase text not null default 'Orçamento' check (fase in (
+    'Orçamento','Aprovado','Material encomendado','Material chegou',
+    'Instalação agendada','Instalado','Concluído'
+  )),
   prioridade text not null default 'Média' check (prioridade in ('Alta','Média','Baixa')),
+  data_orcamento date default current_date,
+  data_instalacao date,
   fornecedor_material text,
   material_chegou text check (material_chegou in ('Sim','Não','A caminho')),
+  valor_total numeric(12,2) not null default 0,
+  valor_entrada numeric(12,2) not null default 0,
+  saldo_devedor numeric(12,2) generated always as (valor_total - valor_entrada) stored,
+  data_vencimento_saldo date,
+  status_pagamento text not null default 'Aguardando entrada' check (status_pagamento in (
+    'Aguardando entrada','Entrada recebida','Vencido','Quitado','Parcelado'
+  )),
   observacoes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists servico_itens (
+  id uuid primary key default gen_random_uuid(),
+  servico_id uuid not null references servicos(id) on delete cascade,
+  descricao text not null,
+  material text,
+  largura numeric(10,2) not null default 0,
+  altura numeric(10,2) not null default 0,
+  area_m2 numeric(12,4) generated always as (largura * altura) stored,
+  preco_m2 numeric(12,2) not null default 0,
+  quantidade integer not null default 1,
+  valor_total numeric(12,2) generated always as (largura * altura * preco_m2 * quantidade) stored,
   created_at timestamptz not null default now()
 );
 
+create table if not exists servico_pagamentos (
+  id uuid primary key default gen_random_uuid(),
+  servico_id uuid not null references servicos(id) on delete cascade,
+  valor numeric(12,2) not null default 0,
+  data_pagamento date not null default current_date,
+  forma text check (forma in ('PIX','Dinheiro','Cartão','Transferência','Outro')),
+  observacao text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists servico_fase_historico (
+  id uuid primary key default gen_random_uuid(),
+  servico_id uuid not null references servicos(id) on delete cascade,
+  fase text not null,
+  changed_at timestamptz not null default now()
+);
+
 -- =========================================================
--- FLUXO DE CAIXA
+-- FLUXO DE CAIXA / FINANCEIRO
 -- =========================================================
+create table if not exists bancos (
+  id uuid primary key default gen_random_uuid(),
+  nome text not null,
+  tipo text not null default 'Banco' check (tipo in ('Banco','Carteira Digital','Dinheiro/Caixa Físico','Outro')),
+  categoria text not null default 'Empresa' check (categoria in ('Empresa','Pessoal')),
+  saldo_inicial numeric(12,2) not null default 0,
+  ativo boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
 create table if not exists lancamentos (
   id uuid primary key default gen_random_uuid(),
   data date not null default current_date,
   tipo text not null check (tipo in ('Entrada','Saída')),
-  banco text not null check (banco in ('Nubank','Bradesco','Caixa','Banco do Brasil','Inter','Dinheiro/Caixa Físico')),
+  banco_id uuid references bancos(id) on delete set null,
+  categoria_tipo text not null default 'Empresa' check (categoria_tipo in ('Empresa','Pessoal')),
+  servico_id uuid references servicos(id) on delete set null,
   descricao text,
   valor numeric(12,2) not null default 0,
   categoria text check (categoria in ('Material/Vidro','Combustível/Transporte','Mão de obra','Ferramentas','Pagamento recebido','Outros')),
@@ -81,6 +120,17 @@ create table if not exists fornecedores (
   avaliacao integer check (avaliacao between 1 and 5),
   observacoes text,
   ativo boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists fornecedor_contatos (
+  id uuid primary key default gen_random_uuid(),
+  fornecedor_id uuid not null references fornecedores(id) on delete cascade,
+  nome text not null,
+  cargo text,
+  telefone text,
+  email text,
+  observacoes text,
   created_at timestamptz not null default now()
 );
 
@@ -126,32 +176,44 @@ create table if not exists leads (
 -- =========================================================
 -- ÍNDICES
 -- =========================================================
-create index if not exists idx_pagamentos_cliente on pagamentos(cliente_id);
-create index if not exists idx_cronograma_cliente on cronograma(cliente_id);
+create index if not exists idx_servicos_cliente on servicos(cliente_id);
+create index if not exists idx_servicos_fase on servicos(fase);
+create index if not exists idx_servicos_data_instalacao on servicos(data_instalacao);
+create index if not exists idx_servico_itens_servico on servico_itens(servico_id);
+create index if not exists idx_servico_pagamentos_servico on servico_pagamentos(servico_id);
+create index if not exists idx_servico_fase_historico_servico on servico_fase_historico(servico_id);
+create index if not exists idx_fornecedor_contatos_fornecedor on fornecedor_contatos(fornecedor_id);
 create index if not exists idx_precos_fornecedor on precos_materiais(fornecedor_id);
 create index if not exists idx_lancamentos_data on lancamentos(data);
-create index if not exists idx_lancamentos_banco on lancamentos(banco);
-create index if not exists idx_pagamentos_status on pagamentos(status);
-create index if not exists idx_cronograma_fase on cronograma(fase);
+create index if not exists idx_lancamentos_banco_id on lancamentos(banco_id);
+create index if not exists idx_lancamentos_servico on lancamentos(servico_id);
 
 -- =========================================================
 -- ROW LEVEL SECURITY
 -- App sem autenticação: acesso liberado via chave anon (uso interno).
 -- =========================================================
 alter table clientes enable row level security;
-alter table pagamentos enable row level security;
-alter table cronograma enable row level security;
+alter table servicos enable row level security;
+alter table servico_itens enable row level security;
+alter table servico_pagamentos enable row level security;
+alter table servico_fase_historico enable row level security;
+alter table bancos enable row level security;
 alter table lancamentos enable row level security;
 alter table fornecedores enable row level security;
+alter table fornecedor_contatos enable row level security;
 alter table precos_materiais enable row level security;
 alter table postagens enable row level security;
 alter table leads enable row level security;
 
 create policy "Public full access" on clientes for all to anon, authenticated using (true) with check (true);
-create policy "Public full access" on pagamentos for all to anon, authenticated using (true) with check (true);
-create policy "Public full access" on cronograma for all to anon, authenticated using (true) with check (true);
+create policy "Public full access" on servicos for all to anon, authenticated using (true) with check (true);
+create policy "Public full access" on servico_itens for all to anon, authenticated using (true) with check (true);
+create policy "Public full access" on servico_pagamentos for all to anon, authenticated using (true) with check (true);
+create policy "Public full access" on servico_fase_historico for all to anon, authenticated using (true) with check (true);
+create policy "Public full access" on bancos for all to anon, authenticated using (true) with check (true);
 create policy "Public full access" on lancamentos for all to anon, authenticated using (true) with check (true);
 create policy "Public full access" on fornecedores for all to anon, authenticated using (true) with check (true);
+create policy "Public full access" on fornecedor_contatos for all to anon, authenticated using (true) with check (true);
 create policy "Public full access" on precos_materiais for all to anon, authenticated using (true) with check (true);
 create policy "Public full access" on postagens for all to anon, authenticated using (true) with check (true);
 create policy "Public full access" on leads for all to anon, authenticated using (true) with check (true);

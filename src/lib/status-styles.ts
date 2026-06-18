@@ -1,3 +1,5 @@
+import type { FaseServico, StatusPagamentoServico } from "./types";
+
 export const statusClienteColor: Record<string, string> = {
   "Orçamento enviado": "bg-muted text-muted-foreground",
   Aprovado: "bg-blue-100 text-blue-700",
@@ -7,12 +9,12 @@ export const statusClienteColor: Record<string, string> = {
   Cancelado: "bg-destructive/10 text-destructive",
 };
 
-export const statusPagamentoColor: Record<string, string> = {
-  "Em dia": "bg-warning/10 text-warning",
+export const statusPagamentoServicoColor: Record<StatusPagamentoServico, string> = {
+  "Aguardando entrada": "bg-muted text-muted-foreground",
+  "Entrada recebida": "bg-blue-100 text-blue-700",
   Vencido: "bg-destructive/10 text-destructive",
   Quitado: "bg-success/10 text-success",
   Parcelado: "bg-blue-100 text-blue-700",
-  "Aguardando entrada": "bg-muted text-muted-foreground",
 };
 
 export const prioridadeColor: Record<string, string> = {
@@ -21,10 +23,22 @@ export const prioridadeColor: Record<string, string> = {
   Baixa: "bg-success/10 text-success border-success/30",
 };
 
-export const fasesCronograma = [
-  "Novo orçamento",
-  "Aguardando material",
-  "Agendado",
-  "Em execução",
+export const fasesServico: readonly FaseServico[] = [
+  "Orçamento",
+  "Aprovado",
+  "Material encomendado",
+  "Material chegou",
+  "Instalação agendada",
+  "Instalado",
   "Concluído",
 ] as const;
+
+export const faseServicoColor: Record<FaseServico, string> = {
+  Orçamento: "bg-muted text-muted-foreground",
+  Aprovado: "bg-blue-100 text-blue-700",
+  "Material encomendado": "bg-amber-100 text-amber-700",
+  "Material chegou": "bg-amber-100 text-amber-700",
+  "Instalação agendada": "bg-violet-100 text-violet-700",
+  Instalado: "bg-violet-100 text-violet-700",
+  Concluído: "bg-success/10 text-success",
+};

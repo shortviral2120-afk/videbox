@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { Fornecedor, PrecoMaterial } from "@/lib/types";
+import type { Fornecedor, FornecedorContato, PrecoMaterial } from "@/lib/types";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,12 +16,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Pencil, Trash2, Star } from "lucide-react";
+import { Plus, Pencil, Trash2, Star, MessageCircle } from "lucide-react";
 import { FornecedorFormDialog } from "./fornecedor-form-dialog";
 import { PrecoFormDialog } from "./preco-form-dialog";
+import { ContatoFormDialog } from "./contato-form-dialog";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import { formatCurrency, formatDate, isOverdue } from "@/lib/utils";
 import { toast } from "sonner";
+
+function buildWhatsAppLink(telefone: string | null): string {
+  const digits = (telefone ?? "").replace(/\D/g, "");
+  const phone = digits.length <= 11 ? `55${digits}` : digits;
+  return `https://api.whatsapp.com/send?phone=${phone}`;
+}
 
 function RatingStars({ rating }: { rating: number | null }) {
   const value = rating ?? 0;
@@ -54,18 +61,29 @@ export function FornecedoresClient() {
   const [deletingPreco, setDeletingPreco] = useState<PrecoMaterial | null>(null);
   const [deletePrecoLoading, setDeletePrecoLoading] = useState(false);
 
+  const [contatos, setContatos] = useState<FornecedorContato[]>([]);
+  const [contatoFormOpen, setContatoFormOpen] = useState(false);
+  const [editingContato, setEditingContato] = useState<FornecedorContato | null>(null);
+  const [deletingContato, setDeletingContato] = useState<FornecedorContato | null>(null);
+  const [deleteContatoLoading, setDeleteContatoLoading] = useState(false);
+
   async function load() {
     setLoading(true);
     const supabase = createClient();
-    const [forRes, precoRes] = await Promise.all([
+    const [forRes, precoRes, contatoRes] = await Promise.all([
       supabase.from("fornecedores").select("*").order("nome"),
       supabase
         .from("precos_materiais")
         .select("*, fornecedores(nome)")
         .order("created_at", { ascending: false }),
+      supabase
+        .from("fornecedor_contatos")
+        .select("*, fornecedores(nome)")
+        .order("created_at", { ascending: false }),
     ]);
     if (forRes.data) setFornecedores(forRes.data as Fornecedor[]);
     if (precoRes.data) setPrecos(precoRes.data as unknown as PrecoMaterial[]);
+    if (contatoRes.data) setContatos(contatoRes.data as unknown as FornecedorContato[]);
     setLoading(false);
   }
 
@@ -109,6 +127,24 @@ export function FornecedoresClient() {
     load();
   }
 
+  async function handleDeleteContato() {
+    if (!deletingContato) return;
+    setDeleteContatoLoading(true);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("fornecedor_contatos")
+      .delete()
+      .eq("id", deletingContato.id);
+    setDeleteContatoLoading(false);
+    if (error) {
+      toast.error("Erro ao excluir contato.");
+      return;
+    }
+    toast.success("Contato excluído.");
+    setDeletingContato(null);
+    load();
+  }
+
   return (
     <>
       <PageHeader
@@ -120,6 +156,7 @@ export function FornecedoresClient() {
         <TabsList>
           <TabsTrigger value="fornecedores">Fornecedores</TabsTrigger>
           <TabsTrigger value="precos">Tabela de preços</TabsTrigger>
+          <TabsTrigger value="contatos">Contatos</TabsTrigger>
         </TabsList>
 
         <TabsContent value="fornecedores">
@@ -285,6 +322,82 @@ export function FornecedoresClient() {
             )}
           </div>
         </TabsContent>
+
+        <TabsContent value="contatos">
+          <div className="flex justify-end mb-4">
+            <Button
+              onClick={() => {
+                setEditingContato(null);
+                setContatoFormOpen(true);
+              }}
+            >
+              <Plus className="h-4 w-4" />
+              Novo contato
+            </Button>
+          </div>
+
+          <div className="rounded-lg border bg-card overflow-x-auto">
+            {loading ? (
+              <div className="p-4 space-y-3">
+                {[...Array(5)].map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
+                ))}
+              </div>
+            ) : contatos.length === 0 ? (
+              <p className="p-8 text-center text-sm text-muted-foreground">
+                Nenhum contato cadastrado.
+              </p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Fornecedor</TableHead>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Cargo</TableHead>
+                    <TableHead>Telefone</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {contatos.map((c) => (
+                    <TableRow key={c.id}>
+                      <TableCell className="font-medium">{c.fornecedores?.nome ?? "-"}</TableCell>
+                      <TableCell>{c.nome}</TableCell>
+                      <TableCell>{c.cargo || "-"}</TableCell>
+                      <TableCell>{c.telefone || "-"}</TableCell>
+                      <TableCell>{c.email || "-"}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-green-600 hover:text-green-700"
+                          disabled={!c.telefone}
+                          onClick={() => window.open(buildWhatsAppLink(c.telefone), "_blank")}
+                        >
+                          <MessageCircle className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setEditingContato(c);
+                            setContatoFormOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => setDeletingContato(c)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        </TabsContent>
       </Tabs>
 
       <FornecedorFormDialog
@@ -316,6 +429,22 @@ export function FornecedoresClient() {
         onConfirm={handleDeletePreco}
         itemLabel={deletingPreco?.material ?? undefined}
         loading={deletePrecoLoading}
+      />
+
+      <ContatoFormDialog
+        open={contatoFormOpen}
+        onOpenChange={setContatoFormOpen}
+        contato={editingContato}
+        fornecedores={fornecedores}
+        onSaved={load}
+      />
+
+      <ConfirmDeleteDialog
+        open={!!deletingContato}
+        onOpenChange={(o) => !o && setDeletingContato(null)}
+        onConfirm={handleDeleteContato}
+        itemLabel={deletingContato?.nome ?? undefined}
+        loading={deleteContatoLoading}
       />
     </>
   );

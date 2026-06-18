@@ -1,7 +1,7 @@
 import {
   LayoutDashboard,
+  ClipboardList,
   Users,
-  CreditCard,
   CalendarClock,
   Wallet,
   Factory,
@@ -17,10 +17,10 @@ export interface NavItem {
 
 export const navItems: NavItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/servicos", label: "Serviços", icon: ClipboardList },
   { href: "/clientes", label: "Clientes", icon: Users },
-  { href: "/pagamentos", label: "Pagamentos", icon: CreditCard },
   { href: "/cronograma", label: "Cronograma", icon: CalendarClock },
-  { href: "/caixa", label: "Caixa", icon: Wallet },
+  { href: "/financeiro", label: "Financeiro", icon: Wallet },
   { href: "/fornecedores", label: "Fornecedores", icon: Factory },
   { href: "/instagram", label: "Instagram", icon: Instagram },
 ];

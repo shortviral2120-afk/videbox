@@ -14,33 +14,33 @@ export type StatusCliente =
   | "Concluído"
   | "Cancelado";
 
-export type StatusPagamento =
-  | "Em dia"
-  | "Vencido"
-  | "Quitado"
-  | "Parcelado"
-  | "Aguardando entrada";
-
-export type FaseCronograma =
-  | "Novo orçamento"
-  | "Aguardando material"
-  | "Agendado"
-  | "Em execução"
+export type FaseServico =
+  | "Orçamento"
+  | "Aprovado"
+  | "Material encomendado"
+  | "Material chegou"
+  | "Instalação agendada"
+  | "Instalado"
   | "Concluído";
 
 export type Prioridade = "Alta" | "Média" | "Baixa";
 
 export type MaterialChegou = "Sim" | "Não" | "A caminho";
 
-export type TipoLancamento = "Entrada" | "Saída";
+export type StatusPagamentoServico =
+  | "Aguardando entrada"
+  | "Entrada recebida"
+  | "Vencido"
+  | "Quitado"
+  | "Parcelado";
 
-export type Banco =
-  | "Nubank"
-  | "Bradesco"
-  | "Caixa"
-  | "Banco do Brasil"
-  | "Inter"
-  | "Dinheiro/Caixa Físico";
+export type FormaPagamentoServico = "PIX" | "Dinheiro" | "Cartão" | "Transferência" | "Outro";
+
+export type TipoBanco = "Banco" | "Carteira Digital" | "Dinheiro/Caixa Físico" | "Outro";
+
+export type CategoriaBanco = "Empresa" | "Pessoal";
+
+export type TipoLancamento = "Entrada" | "Saída";
 
 export type CategoriaLancamento =
   | "Material/Vidro"
@@ -78,45 +78,82 @@ export interface Cliente {
   created_at: string;
 }
 
-export interface Pagamento {
+export interface Servico {
   id: string;
   cliente_id: string;
-  servico: string | null;
-  data_servico: string | null;
-  valor_total: number;
-  valor_pago: number;
-  data_vencimento: string | null;
-  status: StatusPagamento;
-  observacoes: string | null;
-  created_at: string;
-  clientes?: { nome: string } | null;
-}
-
-export interface Cronograma {
-  id: string;
-  cliente_id: string;
-  servico: string | null;
-  previsao_inicio: string | null;
-  previsao_conclusao: string | null;
-  fase: FaseCronograma;
+  titulo: string;
+  descricao: string | null;
+  fase: FaseServico;
   prioridade: Prioridade;
+  data_orcamento: string | null;
+  data_instalacao: string | null;
   fornecedor_material: string | null;
   material_chegou: MaterialChegou | null;
+  valor_total: number;
+  valor_entrada: number;
+  saldo_devedor: number;
+  data_vencimento_saldo: string | null;
+  status_pagamento: StatusPagamentoServico;
   observacoes: string | null;
   created_at: string;
-  clientes?: { nome: string } | null;
+  updated_at: string;
+  clientes?: { nome: string; telefone: string | null } | null;
+}
+
+export interface ServicoItem {
+  id: string;
+  servico_id: string;
+  descricao: string;
+  material: string | null;
+  largura: number;
+  altura: number;
+  area_m2: number;
+  preco_m2: number;
+  quantidade: number;
+  valor_total: number;
+  created_at: string;
+}
+
+export interface ServicoPagamento {
+  id: string;
+  servico_id: string;
+  valor: number;
+  data_pagamento: string;
+  forma: FormaPagamentoServico | null;
+  observacao: string | null;
+  created_at: string;
+}
+
+export interface ServicoFaseHistorico {
+  id: string;
+  servico_id: string;
+  fase: FaseServico;
+  changed_at: string;
+}
+
+export interface BancoConta {
+  id: string;
+  nome: string;
+  tipo: TipoBanco;
+  categoria: CategoriaBanco;
+  saldo_inicial: number;
+  ativo: boolean;
+  created_at: string;
 }
 
 export interface Lancamento {
   id: string;
   data: string;
   tipo: TipoLancamento;
-  banco: Banco;
+  banco_id: string | null;
+  categoria_tipo: CategoriaBanco;
+  servico_id: string | null;
   descricao: string | null;
   valor: number;
   categoria: CategoriaLancamento | null;
   cliente_fornecedor: string | null;
   created_at: string;
+  bancos?: { nome: string } | null;
 }
 
 export interface Fornecedor {
@@ -131,6 +168,18 @@ export interface Fornecedor {
   observacoes: string | null;
   ativo: boolean;
   created_at: string;
+}
+
+export interface FornecedorContato {
+  id: string;
+  fornecedor_id: string;
+  nome: string;
+  cargo: string | null;
+  telefone: string | null;
+  email: string | null;
+  observacoes: string | null;
+  created_at: string;
+  fornecedores?: { nome: string } | null;
 }
 
 export interface PrecoMaterial {

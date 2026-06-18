@@ -21,19 +21,19 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
-import type { Banco, CategoriaLancamento, Lancamento, TipoLancamento } from "@/lib/types";
+import type {
+  BancoConta,
+  CategoriaBanco,
+  CategoriaLancamento,
+  Lancamento,
+  Servico,
+  TipoLancamento,
+} from "@/lib/types";
 import { toInputDate } from "@/lib/utils";
 
 const TIPOS: TipoLancamento[] = ["Entrada", "Saída"];
 
-const BANCOS: Banco[] = [
-  "Nubank",
-  "Bradesco",
-  "Caixa",
-  "Banco do Brasil",
-  "Inter",
-  "Dinheiro/Caixa Físico",
-];
+const CATEGORIAS_BANCO: CategoriaBanco[] = ["Empresa", "Pessoal"];
 
 const CATEGORIAS: CategoriaLancamento[] = [
   "Material/Vidro",
@@ -54,18 +54,24 @@ export function LancamentoFormDialog({
   open,
   onOpenChange,
   lancamento,
+  bancos,
+  servicos,
   onSaved,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   lancamento: Lancamento | null;
+  bancos: BancoConta[];
+  servicos: Servico[];
   onSaved: () => void;
 }) {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     data: "",
     tipo: "Entrada" as TipoLancamento,
-    banco: "Nubank" as Banco,
+    banco_id: "",
+    categoria_tipo: "Empresa" as CategoriaBanco,
+    servico_id: "" as string,
     descricao: "",
     valor: "",
     categoria: "" as CategoriaLancamento | "",
@@ -78,7 +84,9 @@ export function LancamentoFormDialog({
         setForm({
           data: toInputDate(lancamento.data),
           tipo: lancamento.tipo,
-          banco: lancamento.banco,
+          banco_id: lancamento.banco_id ?? "",
+          categoria_tipo: lancamento.categoria_tipo,
+          servico_id: lancamento.servico_id ?? "",
           descricao: lancamento.descricao ?? "",
           valor: String(lancamento.valor ?? ""),
           categoria: lancamento.categoria ?? "",
@@ -88,7 +96,9 @@ export function LancamentoFormDialog({
         setForm({
           data: todayInputDate(),
           tipo: "Entrada",
-          banco: "Nubank",
+          banco_id: "",
+          categoria_tipo: "Empresa",
+          servico_id: "",
           descricao: "",
           valor: "",
           categoria: "",
@@ -104,12 +114,8 @@ export function LancamentoFormDialog({
       toast.error("Informe a data.");
       return;
     }
-    if (!form.tipo) {
-      toast.error("Selecione o tipo.");
-      return;
-    }
-    if (!form.banco) {
-      toast.error("Selecione o banco/carteira.");
+    if (!form.banco_id) {
+      toast.error("Selecione o banco.");
       return;
     }
     if (!form.valor) {
@@ -122,7 +128,9 @@ export function LancamentoFormDialog({
     const payload = {
       data: form.data,
       tipo: form.tipo,
-      banco: form.banco,
+      banco_id: form.banco_id,
+      categoria_tipo: form.categoria_tipo,
+      servico_id: form.servico_id || null,
       descricao: form.descricao || null,
       valor: Number(form.valor),
       categoria: form.categoria || null,
@@ -183,23 +191,45 @@ export function LancamentoFormDialog({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>Banco/Carteira *</Label>
-            <Select
-              value={form.banco}
-              onValueChange={(v) => setForm((f) => ({ ...f, banco: v as Banco }))}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {BANCOS.map((b) => (
-                  <SelectItem key={b} value={b}>
-                    {b}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Banco *</Label>
+              <Select
+                value={form.banco_id}
+                onValueChange={(v) => setForm((f) => ({ ...f, banco_id: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o banco" />
+                </SelectTrigger>
+                <SelectContent>
+                  {bancos.map((b) => (
+                    <SelectItem key={b.id} value={b.id}>
+                      {b.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Empresa/Pessoal *</Label>
+              <Select
+                value={form.categoria_tipo}
+                onValueChange={(v) =>
+                  setForm((f) => ({ ...f, categoria_tipo: v as CategoriaBanco }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORIAS_BANCO.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -248,6 +278,28 @@ export function LancamentoFormDialog({
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Serviço vinculado</Label>
+            <Select
+              value={form.servico_id || NONE_VALUE}
+              onValueChange={(v) =>
+                setForm((f) => ({ ...f, servico_id: v === NONE_VALUE ? "" : v }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE_VALUE}>Nenhum</SelectItem>
+                {servicos.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.titulo}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">

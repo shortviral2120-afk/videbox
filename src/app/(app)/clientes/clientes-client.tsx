@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { Cliente, StatusCliente } from "@/lib/types";
 import { PageHeader } from "@/components/page-header";
@@ -23,12 +24,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Search, Pencil, Trash2 } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, MessageCircle } from "lucide-react";
 import { ClienteFormDialog } from "./client-form-dialog";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { statusClienteColor } from "@/lib/status-styles";
 import { toast } from "sonner";
+
+function buildWhatsAppLink(telefone: string | null): string {
+  const digits = (telefone ?? "").replace(/\D/g, "");
+  const phone = digits.length <= 11 ? `55${digits}` : digits;
+  return `https://api.whatsapp.com/send?phone=${phone}`;
+}
 
 const STATUS_FILTER: (StatusCliente | "Todos")[] = [
   "Todos",
@@ -158,7 +165,9 @@ export function ClientesClient() {
               {filtered.map((c) => (
                 <TableRow key={c.id}>
                   <TableCell className="font-medium">
-                    {c.nome}
+                    <Link href={`/clientes/${c.id}`} className="hover:underline">
+                      {c.nome}
+                    </Link>
                     {c.telefone && (
                       <p className="text-xs text-muted-foreground">{c.telefone}</p>
                     )}
@@ -173,6 +182,15 @@ export function ClientesClient() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-green-600 hover:text-green-700"
+                      disabled={!c.telefone}
+                      onClick={() => window.open(buildWhatsAppLink(c.telefone), "_blank")}
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"

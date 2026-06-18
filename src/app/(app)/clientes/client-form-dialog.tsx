@@ -123,6 +123,10 @@ export function ClienteFormDialog({
     setLoading(false);
 
     if (error) {
+      console.log("Erro ao salvar cliente:", JSON.stringify(error, null, 2));
+      alert(
+        `Erro ao salvar cliente:\nmessage: ${error.message}\ncode: ${error.code}\ndetails: ${error.details}\nhint: ${error.hint}`
+      );
       toast.error("Erro ao salvar cliente.");
       return;
     }

@@ -26,6 +26,8 @@ import { Loader2, Star } from "lucide-react";
 import type { Fornecedor, FormaPagamento } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
+const NONE_VALUE = "__none__";
+
 const FORMAS_PAGAMENTO: FormaPagamento[] = [
   "Dinheiro",
   "PIX",
@@ -189,15 +191,19 @@ export function FornecedorFormDialog({
             <div className="space-y-2">
               <Label>Forma de pagamento</Label>
               <Select
-                value={form.forma_pagamento}
+                value={form.forma_pagamento || NONE_VALUE}
                 onValueChange={(v) =>
-                  setForm((f) => ({ ...f, forma_pagamento: v as FormaPagamento }))
+                  setForm((f) => ({
+                    ...f,
+                    forma_pagamento: v === NONE_VALUE ? "" : (v as FormaPagamento),
+                  }))
                 }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value={NONE_VALUE}>Nenhuma</SelectItem>
                   {FORMAS_PAGAMENTO.map((opt) => (
                     <SelectItem key={opt} value={opt}>
                       {opt}

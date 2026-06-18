@@ -34,6 +34,8 @@ const COMO_CHEGOU: ComoChegou[] = [
   "Outros",
 ];
 
+const NONE_VALUE = "__none__";
+
 const STATUS: StatusCliente[] = [
   "Orçamento enviado",
   "Aprovado",
@@ -159,13 +161,19 @@ export function ClienteFormDialog({
             <div className="space-y-2">
               <Label>Como chegou</Label>
               <Select
-                value={form.como_chegou}
-                onValueChange={(v) => setForm((f) => ({ ...f, como_chegou: v as ComoChegou }))}
+                value={form.como_chegou || NONE_VALUE}
+                onValueChange={(v) =>
+                  setForm((f) => ({
+                    ...f,
+                    como_chegou: v === NONE_VALUE ? "" : (v as ComoChegou),
+                  }))
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value={NONE_VALUE}>Nenhuma</SelectItem>
                   {COMO_CHEGOU.map((opt) => (
                     <SelectItem key={opt} value={opt}>
                       {opt}

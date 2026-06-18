@@ -24,6 +24,8 @@ import { Loader2 } from "lucide-react";
 import type { Fornecedor, PrecoMaterial } from "@/lib/types";
 import { toInputDate } from "@/lib/utils";
 
+const NONE_VALUE = "__none__";
+
 export function PrecoFormDialog({
   open,
   onOpenChange,
@@ -139,13 +141,16 @@ export function PrecoFormDialog({
           <div className="space-y-2">
             <Label>Fornecedor</Label>
             <Select
-              value={form.fornecedor_id}
-              onValueChange={(v) => setForm((f) => ({ ...f, fornecedor_id: v }))}
+              value={form.fornecedor_id || NONE_VALUE}
+              onValueChange={(v) =>
+                setForm((f) => ({ ...f, fornecedor_id: v === NONE_VALUE ? "" : v }))
+              }
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione o fornecedor" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value={NONE_VALUE}>Nenhum</SelectItem>
                 {fornecedores.map((f) => (
                   <SelectItem key={f.id} value={f.id}>
                     {f.nome}

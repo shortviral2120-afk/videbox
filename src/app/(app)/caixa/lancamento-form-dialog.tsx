@@ -48,6 +48,8 @@ function todayInputDate(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+const NONE_VALUE = "__none__";
+
 export function LancamentoFormDialog({
   open,
   onOpenChange,
@@ -225,13 +227,19 @@ export function LancamentoFormDialog({
             <div className="space-y-2">
               <Label>Categoria</Label>
               <Select
-                value={form.categoria}
-                onValueChange={(v) => setForm((f) => ({ ...f, categoria: v as CategoriaLancamento }))}
+                value={form.categoria || NONE_VALUE}
+                onValueChange={(v) =>
+                  setForm((f) => ({
+                    ...f,
+                    categoria: v === NONE_VALUE ? "" : (v as CategoriaLancamento),
+                  }))
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value={NONE_VALUE}>Nenhuma</SelectItem>
                   {CATEGORIAS.map((c) => (
                     <SelectItem key={c} value={c}>
                       {c}

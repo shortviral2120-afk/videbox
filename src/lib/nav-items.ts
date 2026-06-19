@@ -1,11 +1,13 @@
 import {
   LayoutDashboard,
-  ClipboardList,
   Users,
-  CalendarClock,
-  Wallet,
-  Factory,
-  Instagram,
+  ClipboardList,
+  Calendar,
+  FileText,
+  DollarSign,
+  Truck,
+  MessageCircle,
+  User,
   type LucideIcon,
 } from "lucide-react";
 
@@ -17,10 +19,20 @@ export interface NavItem {
 
 export const navItems: NavItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/servicos", label: "Serviços", icon: ClipboardList },
   { href: "/clientes", label: "Clientes", icon: Users },
-  { href: "/cronograma", label: "Cronograma", icon: CalendarClock },
-  { href: "/financeiro", label: "Financeiro", icon: Wallet },
-  { href: "/fornecedores", label: "Fornecedores", icon: Factory },
-  { href: "/instagram", label: "Instagram", icon: Instagram },
+  { href: "/servicos", label: "Serviços", icon: ClipboardList },
+  { href: "/cronograma", label: "Cronograma", icon: Calendar },
+  { href: "/orcamento", label: "Orçamento", icon: FileText },
+  { href: "/financeiro", label: "Financeiro", icon: DollarSign },
+  { href: "/fornecedores", label: "Fornecedores", icon: Truck },
+  { href: "/whatsapp", label: "WhatsApp", icon: MessageCircle },
+  { href: "/perfil", label: "Perfil", icon: User },
 ];
+
+export const primaryNavItems: NavItem[] = navItems.filter((item) =>
+  ["/", "/servicos", "/cronograma", "/financeiro"].includes(item.href)
+);
+
+export const moreNavItems: NavItem[] = navItems.filter(
+  (item) => !primaryNavItems.includes(item)
+);

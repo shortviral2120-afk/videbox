@@ -62,8 +62,10 @@ export function OrcamentoPdfDocument({
           <View style={[styles.row, styles.headerRow]}>
             <Text style={styles.headerCell}>Descrição</Text>
             <Text style={styles.headerCell}>Material</Text>
-            <Text style={styles.headerCell}>Larg. (m)</Text>
-            <Text style={styles.headerCell}>Alt. (m)</Text>
+            <Text style={styles.headerCell}>Larg. orig.</Text>
+            <Text style={styles.headerCell}>Alt. orig.</Text>
+            <Text style={styles.headerCell}>Larg. aj.</Text>
+            <Text style={styles.headerCell}>Alt. aj.</Text>
             <Text style={styles.headerCell}>Área (m²)</Text>
             <Text style={styles.headerCell}>Preço/m²</Text>
             <Text style={styles.headerCell}>Qtd</Text>
@@ -73,6 +75,12 @@ export function OrcamentoPdfDocument({
             <View key={it.id} style={styles.row}>
               <Text style={styles.cell}>{it.descricao}</Text>
               <Text style={styles.cell}>{it.material ?? "-"}</Text>
+              <Text style={styles.cell}>
+                {(it.largura_original ?? it.largura).toFixed(2)}
+              </Text>
+              <Text style={styles.cell}>
+                {(it.altura_original ?? it.altura).toFixed(2)}
+              </Text>
               <Text style={styles.cell}>{it.largura.toFixed(2)}</Text>
               <Text style={styles.cell}>{it.altura.toFixed(2)}</Text>
               <Text style={styles.cell}>{it.area_m2.toFixed(2)}</Text>
@@ -92,7 +100,7 @@ export function OrcamentoPdfDocument({
         )}
 
         <Text style={styles.footer}>
-          Este orçamento é válido por 30 dias a partir da data de emissão.
+          Orçamento válido por 30 dias. {nomeEmpresa || "VidroBox"}.
         </Text>
       </Page>
     </Document>

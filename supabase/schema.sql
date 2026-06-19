@@ -53,12 +53,16 @@ create table if not exists servico_itens (
   servico_id uuid not null references servicos(id) on delete cascade,
   descricao text not null,
   material text,
+  tipo_produto text,
   largura numeric(10,2) not null default 0,
   altura numeric(10,2) not null default 0,
+  largura_original numeric(10,2),
+  altura_original numeric(10,2),
   area_m2 numeric(12,4) generated always as (largura * altura) stored,
   preco_m2 numeric(12,2) not null default 0,
   quantidade integer not null default 1,
   valor_total numeric(12,2) generated always as (largura * altura * preco_m2 * quantidade) stored,
+  observacao text,
   created_at timestamptz not null default now()
 );
 
@@ -146,6 +150,30 @@ create table if not exists precos_materiais (
 );
 
 -- =========================================================
+-- CATÁLOGO DE MATERIAIS (orçamento)
+-- =========================================================
+create table if not exists materiais (
+  id uuid primary key default gen_random_uuid(),
+  nome text not null unique,
+  descricao text,
+  preco_m2 numeric(12,2) not null default 0,
+  ativo boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+insert into materiais (nome, preco_m2) values
+  ('Vidro Incolor 6mm', 180.00),
+  ('Vidro Incolor 8mm', 220.00),
+  ('Vidro Incolor 10mm', 280.00),
+  ('Vidro Fumê 6mm', 210.00),
+  ('Vidro Fumê 8mm', 250.00),
+  ('Vidro Verde 6mm', 200.00),
+  ('Espelho 4mm', 120.00),
+  ('Espelho 6mm', 190.00),
+  ('Película Anti-UV', 85.00)
+on conflict (nome) do nothing;
+
+-- =========================================================
 -- INSTAGRAM / CAPTAÇÃO
 -- =========================================================
 create table if not exists postagens (
@@ -202,6 +230,7 @@ alter table lancamentos enable row level security;
 alter table fornecedores enable row level security;
 alter table fornecedor_contatos enable row level security;
 alter table precos_materiais enable row level security;
+alter table materiais enable row level security;
 alter table postagens enable row level security;
 alter table leads enable row level security;
 
@@ -215,5 +244,6 @@ create policy "Public full access" on lancamentos for all to anon, authenticated
 create policy "Public full access" on fornecedores for all to anon, authenticated using (true) with check (true);
 create policy "Public full access" on fornecedor_contatos for all to anon, authenticated using (true) with check (true);
 create policy "Public full access" on precos_materiais for all to anon, authenticated using (true) with check (true);
+create policy "Public full access" on materiais for all to anon, authenticated using (true) with check (true);
 create policy "Public full access" on postagens for all to anon, authenticated using (true) with check (true);
 create policy "Public full access" on leads for all to anon, authenticated using (true) with check (true);

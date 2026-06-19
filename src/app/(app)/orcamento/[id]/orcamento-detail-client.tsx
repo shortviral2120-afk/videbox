@@ -13,11 +13,12 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, CheckCircle2, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ExternalLink, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { ServicoItemFormDialog } from "@/app/(app)/servicos/[id]/servico-item-form-dialog";
 import { GerarPdfButton } from "@/components/gerar-pdf-button";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -162,7 +163,6 @@ export function OrcamentoDetailClient({ id }: { id: string }) {
       </div>
 
       <div className="flex flex-wrap items-center gap-2 mb-4">
-        <GerarPdfButton servicoId={id} />
         <Button
           onClick={() => {
             setEditingItem(null);
@@ -170,18 +170,29 @@ export function OrcamentoDetailClient({ id }: { id: string }) {
           }}
         >
           <Plus className="h-4 w-4" />
-          Adicionar item
+          Adicionar Item
         </Button>
         {servico.fase === "Orçamento" && (
-          <Button onClick={handleAprovar} disabled={approving}>
+          <Button
+            className="bg-success text-success-foreground hover:bg-success/90"
+            onClick={handleAprovar}
+            disabled={approving}
+          >
             {approving ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <CheckCircle2 className="h-4 w-4" />
             )}
-            Aprovar orçamento
+            Aprovar Orçamento
           </Button>
         )}
+        <GerarPdfButton servicoId={id} />
+        <Button asChild variant="outline">
+          <Link href={`/servicos/${id}`}>
+            <ExternalLink className="h-4 w-4" />
+            Ver Serviço
+          </Link>
+        </Button>
       </div>
 
       <div className="rounded-lg border bg-card overflow-x-auto">
@@ -193,9 +204,11 @@ export function OrcamentoDetailClient({ id }: { id: string }) {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Tipo</TableHead>
                 <TableHead>Descrição</TableHead>
                 <TableHead>Material</TableHead>
-                <TableHead>L × A</TableHead>
+                <TableHead>Largura aj. (m)</TableHead>
+                <TableHead>Altura aj. (m)</TableHead>
                 <TableHead>Área (m²)</TableHead>
                 <TableHead>Preço/m²</TableHead>
                 <TableHead>Qtd</TableHead>
@@ -206,10 +219,24 @@ export function OrcamentoDetailClient({ id }: { id: string }) {
             <TableBody>
               {itens.map((it) => (
                 <TableRow key={it.id}>
+                  <TableCell>{it.tipo_produto ?? "-"}</TableCell>
                   <TableCell className="font-medium">{it.descricao}</TableCell>
                   <TableCell>{it.material ?? "-"}</TableCell>
                   <TableCell>
-                    {it.largura} × {it.altura}
+                    {it.largura.toFixed(2)}
+                    {it.largura_original != null && (
+                      <span className="block text-xs text-muted-foreground">
+                        orig. {it.largura_original.toFixed(2)}
+                      </span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {it.altura.toFixed(2)}
+                    {it.altura_original != null && (
+                      <span className="block text-xs text-muted-foreground">
+                        orig. {it.altura_original.toFixed(2)}
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell>{it.area_m2.toFixed(2)}</TableCell>
                   <TableCell>{formatCurrency(it.preco_m2)}</TableCell>
@@ -233,11 +260,18 @@ export function OrcamentoDetailClient({ id }: { id: string }) {
                 </TableRow>
               ))}
             </TableBody>
+            <TableFooter>
+              <TableRow className="bg-primary text-primary-foreground hover:bg-primary">
+                <TableCell colSpan={8} className="text-right font-semibold">
+                  Total geral
+                </TableCell>
+                <TableCell className="font-bold">{formatCurrency(totalGeral)}</TableCell>
+                <TableCell />
+              </TableRow>
+            </TableFooter>
           </Table>
         )}
       </div>
-
-      <p className="text-lg font-bold text-right">Total geral: {formatCurrency(totalGeral)}</p>
 
       <ServicoItemFormDialog
         open={itemFormOpen}

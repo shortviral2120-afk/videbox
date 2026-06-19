@@ -36,6 +36,21 @@ export type StatusPagamentoServico =
 
 export type FormaPagamentoServico = "PIX" | "Dinheiro" | "Cartão" | "Transferência" | "Outro";
 
+export type TipoProduto =
+  | "Janela Fixa"
+  | "Janela Móvel"
+  | "Janela Fixa + Móvel"
+  | "Janela 2 Fixas"
+  | "Janela 2 Móveis"
+  | "Box Frontal"
+  | "Box L"
+  | "Box Frontal + Lateral"
+  | "Porta Vasculhante"
+  | "Porta Inteira"
+  | "Espelho"
+  | "Película"
+  | "Outro";
+
 export type TipoBanco = "Banco" | "Carteira Digital" | "Dinheiro/Caixa Físico" | "Outro";
 
 export type CategoriaBanco = "Empresa" | "Pessoal";
@@ -105,12 +120,25 @@ export interface ServicoItem {
   servico_id: string;
   descricao: string;
   material: string | null;
+  tipo_produto: TipoProduto | null;
   largura: number;
   altura: number;
+  largura_original: number | null;
+  altura_original: number | null;
   area_m2: number;
   preco_m2: number;
   quantidade: number;
   valor_total: number;
+  observacao: string | null;
+  created_at: string;
+}
+
+export interface Material {
+  id: string;
+  nome: string;
+  descricao: string | null;
+  preco_m2: number;
+  ativo: boolean;
   created_at: string;
 }
 

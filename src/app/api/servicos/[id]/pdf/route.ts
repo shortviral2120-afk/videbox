@@ -5,6 +5,9 @@ import { OrcamentoPdfDocument } from "./orcamento-pdf-document";
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   const supabase = createClient();
+  const { searchParams } = new URL(request.url);
+  const nomeEmpresa = searchParams.get("nomeEmpresa") ?? undefined;
+  const telefoneEmpresa = searchParams.get("telefoneEmpresa") ?? undefined;
 
   const { data: servico } = await supabase
     .from("servicos")
@@ -26,6 +29,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
     OrcamentoPdfDocument({
       servico: servico as unknown as Servico,
       itens: (itens ?? []) as unknown as ServicoItem[],
+      nomeEmpresa,
+      telefoneEmpresa,
     })
   );
 

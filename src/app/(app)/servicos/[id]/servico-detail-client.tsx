@@ -32,7 +32,7 @@ import {
   Pencil,
   Plus,
   Trash2,
-  FileDown,
+  FileText,
   MessageCircle,
   Wallet,
   CircleDollarSign,
@@ -41,6 +41,8 @@ import {
 import { ServicoEditDialog } from "./servico-edit-dialog";
 import { ServicoItemFormDialog } from "./servico-item-form-dialog";
 import { ServicoPagamentoFormDialog } from "./servico-pagamento-form-dialog";
+import { GerarPdfButton } from "@/components/gerar-pdf-button";
+import { loadPerfil } from "@/lib/perfil";
 import { formatCurrency, formatDate, isOverdue } from "@/lib/utils";
 import {
   fasesServico,
@@ -51,17 +53,17 @@ import { toast } from "sonner";
 
 function buildWhatsAppUrl(
   telefone: string | null | undefined,
-  servico: Servico,
+  saldoDevedor: number,
   clienteNome: string
 ): string {
   const digits = (telefone ?? "").replace(/\D/g, "");
   const phone = digits.length <= 11 ? `55${digits}` : digits;
   const text = encodeURIComponent(
     `Olá ${clienteNome}, tudo bem? Passando para lembrar que temos um saldo de ${formatCurrency(
-      servico.saldo_devedor
+      saldoDevedor
     )} em aberto. Podemos combinar o pagamento?`
   );
-  return `https://api.whatsapp.com/send?phone=${phone}&text=${text}`;
+  return `https://wa.me/${phone}?text=${text}`;
 }
 
 export function ServicoDetailClient({ id }: { id: string }) {
@@ -119,7 +121,41 @@ export function ServicoDetailClient({ id }: { id: string }) {
       .update({ fase: novaFase, updated_at: new Date().toISOString() })
       .eq("id", id);
     await supabase.from("servico_fase_historico").insert({ servico_id: id, fase: novaFase });
-    toast.success("Fase atualizada!");
+
+    if (novaFase === "Concluído" && servico) {
+      try {
+        const { data: existente } = await supabase
+          .from("lancamentos")
+          .select("id")
+          .eq("servico_id", id)
+          .eq("categoria", "Pagamento recebido")
+          .eq("descricao", `Serviço concluído: ${servico.titulo}`)
+          .maybeSingle();
+        if (!existente && servico.saldo_devedor > 0) {
+          const { error: lancError } = await supabase.from("lancamentos").insert({
+            data: new Date().toISOString().slice(0, 10),
+            tipo: "Entrada",
+            categoria: "Pagamento recebido",
+            categoria_tipo: "Empresa",
+            descricao: `Serviço concluído: ${servico.titulo}`,
+            valor: servico.saldo_devedor,
+            servico_id: id,
+            banco_id: null,
+          });
+          if (lancError) throw lancError;
+          toast.success(
+            `Serviço concluído! Lançamento de ${formatCurrency(servico.saldo_devedor)} criado no Financeiro.`
+          );
+        } else {
+          toast.success("Fase atualizada!");
+        }
+      } catch {
+        toast.error("Serviço concluído, mas houve erro ao criar o lançamento no Financeiro.");
+      }
+    } else {
+      toast.success("Fase atualizada!");
+    }
+
     load();
   }
 
@@ -205,8 +241,11 @@ export function ServicoDetailClient({ id }: { id: string }) {
   const currentIndex = fasesServico.indexOf(servico.fase);
   const totalOrcamento = itens.reduce((sum, it) => sum + it.valor_total, 0);
   const clienteNome = servico.clientes?.nome ?? "-";
+  const totalPago = pagamentos.reduce((sum, p) => sum + p.valor, 0);
+  const saldoDevedor = servico.valor_total - totalPago;
   const progressoPagamento =
-    servico.valor_total > 0 ? Math.min(100, (servico.valor_entrada / servico.valor_total) * 100) : 0;
+    servico.valor_total > 0 ? Math.min(100, (totalPago / servico.valor_total) * 100) : 0;
+  const percentualEntradaSugerido = loadPerfil().percentualEntrada;
 
   return (
     <>
@@ -293,11 +332,12 @@ export function ServicoDetailClient({ id }: { id: string }) {
         <TabsContent value="orcamento" className="space-y-4">
           <div className="flex justify-end gap-2">
             <Button asChild variant="outline">
-              <a href={`/api/servicos/${id}/pdf`} target="_blank" rel="noopener noreferrer">
-                <FileDown className="h-4 w-4" />
-                Gerar PDF
-              </a>
+              <Link href={`/orcamento/${id}`}>
+                <FileText className="h-4 w-4" />
+                Ver orçamento completo
+              </Link>
             </Button>
+            <GerarPdfButton servicoId={id} />
             <Button
               onClick={() => {
                 setEditingItem(null);
@@ -368,20 +408,31 @@ export function ServicoDetailClient({ id }: { id: string }) {
         </TabsContent>
 
         <TabsContent value="pagamentos" className="space-y-4">
+          {servico.valor_total === 0 && (
+            <div className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
+              Finalize o orçamento primeiro para definir o valor total.
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <StatCard label="Valor total" value={formatCurrency(servico.valor_total)} icon={CircleDollarSign} />
-            <StatCard label="Total pago" value={formatCurrency(servico.valor_entrada)} icon={Wallet} tone="success" />
+            <StatCard label="Total pago" value={formatCurrency(totalPago)} icon={Wallet} tone="success" />
             <StatCard
               label="Saldo devedor"
-              value={formatCurrency(servico.saldo_devedor)}
+              value={formatCurrency(saldoDevedor)}
               icon={AlertCircle}
-              tone={servico.saldo_devedor > 0 ? "destructive" : "success"}
+              tone={saldoDevedor > 0 ? "destructive" : "success"}
             />
           </div>
 
           <Progress value={progressoPagamento} />
 
-          {isOverdue(servico.data_vencimento_saldo) && servico.saldo_devedor > 0 && (
+          <p className="text-xs text-muted-foreground">
+            Entrada sugerida ({percentualEntradaSugerido}%):{" "}
+            {formatCurrency((servico.valor_total * percentualEntradaSugerido) / 100)}
+          </p>
+
+          {isOverdue(servico.data_vencimento_saldo) && saldoDevedor > 0 && (
             <Badge variant="destructive">Vencido em {formatDate(servico.data_vencimento_saldo)}</Badge>
           )}
 
@@ -396,7 +447,7 @@ export function ServicoDetailClient({ id }: { id: string }) {
                 className="text-green-600 border-green-600 hover:bg-green-50 hover:text-green-700"
                 onClick={() =>
                   window.open(
-                    buildWhatsAppUrl(servico.clientes?.telefone, servico, clienteNome),
+                    buildWhatsAppUrl(servico.clientes?.telefone, saldoDevedor, clienteNome),
                     "_blank"
                   )
                 }

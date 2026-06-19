@@ -20,7 +20,7 @@ import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MonthCalendar } from "@/components/month-calendar";
-import { formatDate, cn } from "@/lib/utils";
+import { formatDate, formatCurrency, cn } from "@/lib/utils";
 import { fasesServico, prioridadeColor } from "@/lib/status-styles";
 import { toast } from "sonner";
 
@@ -84,7 +84,39 @@ export function CronogramaClient() {
 
     await supabase.from("servico_fase_historico").insert({ servico_id: servicoId, fase: newFase });
 
-    toast.success("Serviço movido.");
+    if (newFase === "Concluído") {
+      try {
+        const { data: existente } = await supabase
+          .from("lancamentos")
+          .select("id")
+          .eq("servico_id", servicoId)
+          .eq("categoria", "Pagamento recebido")
+          .eq("descricao", `Serviço concluído: ${current.titulo}`)
+          .maybeSingle();
+        if (!existente && current.saldo_devedor > 0) {
+          const { error: lancError } = await supabase.from("lancamentos").insert({
+            data: new Date().toISOString().slice(0, 10),
+            tipo: "Entrada",
+            categoria: "Pagamento recebido",
+            categoria_tipo: "Empresa",
+            descricao: `Serviço concluído: ${current.titulo}`,
+            valor: current.saldo_devedor,
+            servico_id: servicoId,
+            banco_id: null,
+          });
+          if (lancError) throw lancError;
+          toast.success(
+            `Serviço concluído! Lançamento de ${formatCurrency(current.saldo_devedor)} criado no Financeiro.`
+          );
+        } else {
+          toast.success("Serviço movido.");
+        }
+      } catch {
+        toast.error("Serviço concluído, mas houve erro ao criar o lançamento no Financeiro.");
+      }
+    } else {
+      toast.success("Serviço movido.");
+    }
   }
 
   const activeServico = activeId ? servicos.find((s) => s.id === activeId) ?? null : null;
@@ -101,7 +133,7 @@ export function CronogramaClient() {
     <>
       <PageHeader title="Cronograma" description="Acompanhe o andamento dos serviços" />
 
-      <div className="grid grid-cols-1 lg:grid-cols-[60%_40%] gap-6">
+      <div className="space-y-6">
         <div>
           {loading ? (
             <div className="flex gap-4 overflow-x-auto kanban-scroll">
@@ -139,19 +171,17 @@ export function CronogramaClient() {
         <div className="space-y-4">
           <MonthCalendar events={events} onDayClick={setSelectedDate} selectedDate={selectedDate} />
 
-          <div className="rounded-lg border bg-card p-3 space-y-2">
-            {!selectedDate ? (
-              <p className="text-sm text-muted-foreground">
-                Selecione um dia no calendário para ver os serviços agendados.
-              </p>
-            ) : servicosNoDia.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Nenhum serviço agendado para este dia.
-              </p>
-            ) : (
-              servicosNoDia.map((s) => <ServicoDiaRow key={s.id} servico={s} />)
-            )}
-          </div>
+          {selectedDate && (
+            <div className="rounded-lg border bg-card p-3 space-y-2">
+              {servicosNoDia.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Nenhum serviço agendado para este dia.
+                </p>
+              ) : (
+                servicosNoDia.map((s) => <ServicoDiaRow key={s.id} servico={s} />)
+              )}
+            </div>
+          )}
         </div>
       </div>
     </>

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { Cliente, Servico, ServicoPagamento } from "@/lib/types";
+import type { Cliente, Lancamento, Servico } from "@/lib/types";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,20 +25,20 @@ export function DashboardClient() {
   const [loading, setLoading] = useState(true);
   const [, setClientes] = useState<Cliente[]>([]);
   const [servicos, setServicos] = useState<Servico[]>([]);
-  const [pagamentos, setPagamentos] = useState<ServicoPagamento[]>([]);
+  const [lancamentos, setLancamentos] = useState<Lancamento[]>([]);
 
   useEffect(() => {
     async function load() {
       setLoading(true);
       const supabase = createClient();
-      const [cliRes, servRes, pagRes] = await Promise.all([
+      const [cliRes, servRes, lancRes] = await Promise.all([
         supabase.from("clientes").select("*"),
         supabase.from("servicos").select("*, clientes(nome)"),
-        supabase.from("servico_pagamentos").select("*"),
+        supabase.from("lancamentos").select("*").eq("tipo", "Entrada"),
       ]);
       if (cliRes.data) setClientes(cliRes.data as Cliente[]);
       if (servRes.data) setServicos(servRes.data as unknown as Servico[]);
-      if (pagRes.data) setPagamentos(pagRes.data as ServicoPagamento[]);
+      if (lancRes.data) setLancamentos(lancRes.data as Lancamento[]);
       setLoading(false);
     }
     load();
@@ -53,13 +53,13 @@ export function DashboardClient() {
     const now = new Date();
     const month = now.getMonth();
     const year = now.getFullYear();
-    return pagamentos
-      .filter((p) => {
-        const d = new Date(p.data_pagamento);
+    return lancamentos
+      .filter((l) => {
+        const d = new Date(l.data);
         return d.getMonth() === month && d.getFullYear() === year;
       })
-      .reduce((sum, p) => sum + p.valor, 0);
-  }, [pagamentos]);
+      .reduce((sum, l) => sum + l.valor, 0);
+  }, [lancamentos]);
 
   const aReceber = useMemo(
     () => servicos.reduce((sum, s) => sum + (s.saldo_devedor ?? 0), 0),
@@ -85,12 +85,12 @@ export function DashboardClient() {
       months.push({ month: d.getMonth(), year: d.getFullYear() });
     }
     return months.map(({ month, year }) => {
-      const recebido = pagamentos
-        .filter((p) => {
-          const d = new Date(p.data_pagamento);
+      const recebido = lancamentos
+        .filter((l) => {
+          const d = new Date(l.data);
           return d.getMonth() === month && d.getFullYear() === year;
         })
-        .reduce((sum, p) => sum + p.valor, 0);
+        .reduce((sum, l) => sum + l.valor, 0);
       const concluidos = servicos
         .filter((s) => {
           if (s.fase !== "Concluído") return false;
@@ -101,10 +101,16 @@ export function DashboardClient() {
       const label = new Date(year, month, 1).toLocaleDateString("pt-BR", { month: "short" });
       return { label, recebido, concluidos };
     });
-  }, [pagamentos, servicos]);
+  }, [lancamentos, servicos]);
 
   const cobrancasVencidas = useMemo(
-    () => servicos.filter((s) => s.saldo_devedor > 0 && isOverdue(s.data_vencimento_saldo)),
+    () =>
+      servicos.filter(
+        (s) =>
+          s.saldo_devedor > 0 &&
+          s.status_pagamento !== "Quitado" &&
+          isOverdue(s.data_vencimento_saldo)
+      ),
     [servicos]
   );
 

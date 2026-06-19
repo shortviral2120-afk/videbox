@@ -79,7 +79,15 @@ export function ServicoPagamentoFormDialog({
       setLoading(false);
       return;
     }
-    const novoValorEntrada = servico.valor_entrada + valorNum;
+
+    const { data: pagamentosAtuais } = await supabase
+      .from("servico_pagamentos")
+      .select("valor")
+      .eq("servico_id", servico.id);
+    const novoValorEntrada = (pagamentosAtuais ?? []).reduce(
+      (sum, p) => sum + (p.valor as number),
+      0
+    );
     const novoStatus = novoValorEntrada >= servico.valor_total ? "Quitado" : "Entrada recebida";
     const { error: updateError } = await supabase
       .from("servicos")
@@ -94,7 +102,24 @@ export function ServicoPagamentoFormDialog({
       setLoading(false);
       return;
     }
-    toast.success("Pagamento registrado!");
+
+    try {
+      const { error: lancError } = await supabase.from("lancamentos").insert({
+        data: dataPagamento,
+        tipo: "Entrada",
+        categoria: "Pagamento recebido",
+        categoria_tipo: "Empresa",
+        descricao: `Pagamento recebido: ${servico.titulo}`,
+        valor: valorNum,
+        servico_id: servico.id,
+        banco_id: null,
+      });
+      if (lancError) throw lancError;
+      toast.success("Pagamento registrado e lançamento criado no Financeiro!");
+    } catch {
+      toast.error("Pagamento registrado, mas houve erro ao criar o lançamento no Financeiro.");
+    }
+
     setLoading(false);
     onSaved();
     onOpenChange(false);

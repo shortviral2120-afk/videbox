@@ -116,22 +116,48 @@ export function ClienteFormDialog({
       observacoes: form.observacoes || null,
     };
 
-    const { error } = cliente
-      ? await supabase.from("clientes").update(payload).eq("id", cliente.id)
-      : await supabase.from("clientes").insert(payload);
+    if (cliente) {
+      const { error } = await supabase.from("clientes").update(payload).eq("id", cliente.id);
+      setLoading(false);
+      if (error) {
+        toast.error("Erro ao salvar cliente.");
+        return;
+      }
+      toast.success("Cliente atualizado!");
+      onSaved();
+      onOpenChange(false);
+      return;
+    }
 
-    setLoading(false);
+    const { data: novoCliente, error } = await supabase
+      .from("clientes")
+      .insert(payload)
+      .select()
+      .single();
 
-    if (error) {
-      console.log("Erro ao salvar cliente:", JSON.stringify(error, null, 2));
-      alert(
-        `Erro ao salvar cliente:\nmessage: ${error.message}\ncode: ${error.code}\ndetails: ${error.details}\nhint: ${error.hint}`
-      );
+    if (error || !novoCliente) {
+      setLoading(false);
       toast.error("Erro ao salvar cliente.");
       return;
     }
 
-    toast.success(cliente ? "Cliente atualizado!" : "Cliente cadastrado!");
+    try {
+      const { error: servicoError } = await supabase.from("servicos").insert({
+        cliente_id: novoCliente.id,
+        titulo: form.tipo_servico.trim() || "Novo serviço",
+        fase: "Orçamento",
+        status_pagamento: "Aguardando entrada",
+        data_orcamento: new Date().toISOString().slice(0, 10),
+        valor_total: 0,
+        valor_entrada: 0,
+      });
+      if (servicoError) throw servicoError;
+    } catch {
+      toast.error("Cliente cadastrado, mas houve um erro ao criar o serviço automático.");
+    }
+
+    setLoading(false);
+    toast.success("Cliente cadastrado!");
     onSaved();
     onOpenChange(false);
   }

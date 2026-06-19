@@ -129,65 +129,33 @@ export function ServicosClient() {
         <p className="p-8 text-center text-sm text-muted-foreground">
           Nenhum serviço encontrado.
         </p>
+      ) : faseFilter === "Todos" ? (
+        <div className="space-y-8">
+          {fasesServico.map((fase) => {
+            const servicosFase = filtered.filter((s) => s.fase === fase);
+            return (
+              <div key={fase}>
+                <div className="flex items-center gap-2 mb-3">
+                  <h2 className="font-semibold">{fase}</h2>
+                  <Badge variant="secondary">{servicosFase.length}</Badge>
+                </div>
+                {servicosFase.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Nenhum serviço nesta fase.</p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {servicosFase.map((s) => (
+                      <ServicoCard key={s.id} servico={s} onDelete={setDeleting} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((s) => (
-            <Link key={s.id} href={`/servicos/${s.id}`}>
-              <Card className="h-full hover:border-primary/50 transition-colors">
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="font-semibold text-base">{s.clientes?.nome ?? "-"}</p>
-                      <p className="text-sm text-muted-foreground">{s.titulo}</p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setDeleting(s);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Badge className={faseServicoColor[s.fase]} variant="outline">
-                      {s.fase}
-                    </Badge>
-                    <Badge className={prioridadeColor[s.prioridade]} variant="outline">
-                      {s.prioridade}
-                    </Badge>
-                  </div>
-
-                  <div className="flex items-center justify-between text-sm">
-                    <div>
-                      <p className="text-xs text-muted-foreground">Total</p>
-                      <p className="font-medium">{formatCurrency(s.valor_total)}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-muted-foreground">Saldo</p>
-                      <p
-                        className={
-                          s.saldo_devedor > 0
-                            ? "font-medium text-destructive"
-                            : "font-medium text-success"
-                        }
-                      >
-                        {formatCurrency(s.saldo_devedor)}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <CalendarClock className="h-3.5 w-3.5" />
-                    {s.data_instalacao ? formatDate(s.data_instalacao) : "Sem data"}
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
+            <ServicoCard key={s.id} servico={s} onDelete={setDeleting} />
           ))}
         </div>
       )}
@@ -207,5 +175,70 @@ export function ServicosClient() {
         loading={deleteLoading}
       />
     </>
+  );
+}
+
+function ServicoCard({
+  servico: s,
+  onDelete,
+}: {
+  servico: Servico;
+  onDelete: (servico: Servico) => void;
+}) {
+  return (
+    <Link href={`/servicos/${s.id}`}>
+      <Card className="h-full hover:border-primary/50 transition-colors">
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="font-semibold text-base">{s.clientes?.nome ?? "-"}</p>
+              <p className="text-sm text-muted-foreground">{s.titulo}</p>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onDelete(s);
+              }}
+            >
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Badge className={faseServicoColor[s.fase]} variant="outline">
+              {s.fase}
+            </Badge>
+            <Badge className={prioridadeColor[s.prioridade]} variant="outline">
+              {s.prioridade}
+            </Badge>
+          </div>
+
+          <div className="flex items-center justify-between text-sm">
+            <div>
+              <p className="text-xs text-muted-foreground">Total</p>
+              <p className="font-medium">{formatCurrency(s.valor_total)}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-muted-foreground">Saldo</p>
+              <p
+                className={
+                  s.saldo_devedor > 0 ? "font-medium text-destructive" : "font-medium text-success"
+                }
+              >
+                {formatCurrency(s.saldo_devedor)}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <CalendarClock className="h-3.5 w-3.5" />
+            {s.data_instalacao ? formatDate(s.data_instalacao) : "Sem data"}
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
   );
 }

@@ -5,7 +5,8 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 const styles = StyleSheet.create({
   page: { padding: 32, fontSize: 10, color: "#1A3A5C" },
   header: { fontSize: 22, fontWeight: 700, marginBottom: 2, color: "#1A3A5C" },
-  sub: { fontSize: 11, marginBottom: 20, color: "#475569" },
+  sub: { fontSize: 11, marginBottom: 4, color: "#475569" },
+  meta: { fontSize: 9, marginBottom: 20, color: "#64748b" },
   section: { marginBottom: 14, gap: 2 },
   label: { fontWeight: 700 },
   table: { borderWidth: 1, borderColor: "#1A3A5C", marginTop: 8 },
@@ -21,15 +22,24 @@ const styles = StyleSheet.create({
 export function OrcamentoPdfDocument({
   servico,
   itens,
+  nomeEmpresa,
+  telefoneEmpresa,
 }: {
   servico: Servico;
   itens: ServicoItem[];
+  nomeEmpresa?: string;
+  telefoneEmpresa?: string;
 }) {
+  const numeroOrcamento = servico.id.slice(0, 8).toUpperCase();
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        <Text style={styles.header}>VidroBox</Text>
-        <Text style={styles.sub}>Orçamento de Serviço</Text>
+        <Text style={styles.header}>{nomeEmpresa || "VidroBox"}</Text>
+        <Text style={styles.sub}>
+          Orçamento Nº {numeroOrcamento} {telefoneEmpresa ? `· ${telefoneEmpresa}` : ""}
+        </Text>
+        <Text style={styles.meta}>Data: {formatDate(servico.data_orcamento)}</Text>
 
         <View style={styles.section}>
           <Text>
@@ -45,10 +55,6 @@ export function OrcamentoPdfDocument({
           <Text>
             <Text style={styles.label}>Serviço: </Text>
             {servico.titulo}
-          </Text>
-          <Text>
-            <Text style={styles.label}>Data do orçamento: </Text>
-            {formatDate(servico.data_orcamento)}
           </Text>
         </View>
 
@@ -80,6 +86,10 @@ export function OrcamentoPdfDocument({
         <View style={styles.totalRow}>
           <Text style={styles.totalText}>Total: {formatCurrency(servico.valor_total)}</Text>
         </View>
+
+        {servico.observacoes && (
+          <Text style={styles.footer}>Observações: {servico.observacoes}</Text>
+        )}
 
         <Text style={styles.footer}>
           Este orçamento é válido por 30 dias a partir da data de emissão.

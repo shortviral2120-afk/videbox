@@ -69,6 +69,15 @@ export function PerfilClient() {
               />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="slogan">Slogan/descrição</Label>
+              <Input
+                id="slogan"
+                placeholder="Ex: vidraçaria e serviços"
+                value={perfil.slogan}
+                onChange={(e) => setPerfil((p) => ({ ...p, slogan: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="nomeResponsavel">Nome do responsável</Label>
               <Input
                 id="nomeResponsavel"
@@ -107,6 +116,14 @@ export function PerfilClient() {
                 id="endereco"
                 value={perfil.endereco}
                 onChange={(e) => setPerfil((p) => ({ ...p, endereco: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cidade">Cidade</Label>
+              <Input
+                id="cidade"
+                value={perfil.cidade}
+                onChange={(e) => setPerfil((p) => ({ ...p, cidade: e.target.value }))}
               />
             </div>
           </div>

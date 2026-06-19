@@ -1,10 +1,12 @@
 export interface PerfilEmpresa {
   nomeEmpresa: string;
+  slogan: string;
   nomeResponsavel: string;
   telefone: string;
   email: string;
   cnpjCpf: string;
   endereco: string;
+  cidade: string;
   logoBase64: string;
   percentualEntrada: number;
   moeda: string;
@@ -14,11 +16,13 @@ export const PERFIL_STORAGE_KEY = "vidrobox_perfil";
 
 export const PERFIL_PADRAO: PerfilEmpresa = {
   nomeEmpresa: "VidroBox",
+  slogan: "",
   nomeResponsavel: "",
   telefone: "",
   email: "",
   cnpjCpf: "",
   endereco: "",
+  cidade: "",
   logoBase64: "",
   percentualEntrada: 70,
   moeda: "BRL",

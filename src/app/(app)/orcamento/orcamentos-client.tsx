@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import type { Cliente, Material, Servico } from "@/lib/types";
+import type { Cliente, CategoriaMaterial, Material, Servico } from "@/lib/types";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,7 +28,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Plus, Search, Pencil, Trash2 } from "lucide-react";
-import { ServicoFormDialog } from "@/app/(app)/servicos/servico-form-dialog";
+import { NovoOrcamentoWizard } from "./novo-orcamento-wizard";
 import { MaterialFormDialog } from "./material-form-dialog";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -38,6 +38,19 @@ import { toast } from "sonner";
 const STATUS_FILTER = ["Todos", "Pendente", "Aprovado", "Concluído"] as const;
 
 type StatusFilter = (typeof STATUS_FILTER)[number];
+
+const CATEGORIA_TABS = [
+  "Todas",
+  "Portas",
+  "Janelas",
+  "Box",
+  "Forro PVC",
+  "Espelho",
+  "Prateleiras",
+  "Outros",
+] as const;
+
+type CategoriaTab = (typeof CATEGORIA_TABS)[number];
 
 export function OrcamentosClient() {
   const router = useRouter();
@@ -51,6 +64,7 @@ export function OrcamentosClient() {
 
   const [materiais, setMateriais] = useState<Material[]>([]);
   const [materiaisLoading, setMateriaisLoading] = useState(true);
+  const [categoriaTab, setCategoriaTab] = useState<CategoriaTab>("Todas");
   const [materialFormOpen, setMaterialFormOpen] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
   const [deletingMaterial, setDeletingMaterial] = useState<Material | null>(null);
@@ -110,6 +124,11 @@ export function OrcamentosClient() {
       return matchesSearch && matchesStatus;
     });
   }, [servicos, search, statusFilter]);
+
+  const materiaisFiltrados = useMemo(() => {
+    if (categoriaTab === "Todas") return materiais;
+    return materiais.filter((m) => m.categoria === (categoriaTab as CategoriaMaterial));
+  }, [materiais, categoriaTab]);
 
   async function handleDeleteMaterial() {
     if (!deletingMaterial) return;
@@ -228,6 +247,16 @@ export function OrcamentosClient() {
             </Button>
           </div>
 
+          <Tabs value={categoriaTab} onValueChange={(v) => setCategoriaTab(v as CategoriaTab)}>
+            <TabsList className="flex-wrap h-auto">
+              {CATEGORIA_TABS.map((c) => (
+                <TabsTrigger key={c} value={c}>
+                  {c}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+
           <div className="rounded-lg border bg-card overflow-x-auto">
             {materiaisLoading ? (
               <div className="p-4 space-y-3">
@@ -235,24 +264,26 @@ export function OrcamentosClient() {
                   <Skeleton key={i} className="h-12 w-full" />
                 ))}
               </div>
-            ) : materiais.length === 0 ? (
+            ) : materiaisFiltrados.length === 0 ? (
               <p className="p-8 text-center text-sm text-muted-foreground">
-                Nenhum material cadastrado.
+                Nenhum material cadastrado nesta categoria.
               </p>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Nome</TableHead>
+                    <TableHead>Categoria</TableHead>
                     <TableHead>Descrição</TableHead>
                     <TableHead>Preço/m²</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {materiais.map((m) => (
+                  {materiaisFiltrados.map((m) => (
                     <TableRow key={m.id}>
                       <TableCell className="font-medium">{m.nome}</TableCell>
+                      <TableCell>{m.categoria}</TableCell>
                       <TableCell>{m.descricao ?? "-"}</TableCell>
                       <TableCell>{formatCurrency(m.preco_m2)}</TableCell>
                       <TableCell className="text-right">
@@ -279,7 +310,7 @@ export function OrcamentosClient() {
         </TabsContent>
       </Tabs>
 
-      <ServicoFormDialog
+      <NovoOrcamentoWizard
         open={novoOrcamentoOpen}
         onOpenChange={setNovoOrcamentoOpen}
         clientes={clientes}

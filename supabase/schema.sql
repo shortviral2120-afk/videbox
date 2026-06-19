@@ -16,8 +16,17 @@ create table if not exists clientes (
   valor_orcado numeric(12,2) default 0,
   status text not null default 'Orçamento enviado' check (status in ('Orçamento enviado','Aprovado','Aguardando obra','Em execução','Concluído','Cancelado')),
   observacoes text,
+  endereco text,
+  cidade text,
+  cpf_cnpj text,
+  validade_proposta date,
   created_at timestamptz not null default now()
 );
+
+alter table clientes add column if not exists endereco text;
+alter table clientes add column if not exists cidade text;
+alter table clientes add column if not exists cpf_cnpj text;
+alter table clientes add column if not exists validade_proposta date;
 
 -- =========================================================
 -- SERVIÇOS (módulo central: orçamento, fases, pagamentos)
@@ -157,9 +166,13 @@ create table if not exists materiais (
   nome text not null unique,
   descricao text,
   preco_m2 numeric(12,2) not null default 0,
+  categoria text not null default 'Outros' check (categoria in ('Portas','Janelas','Box','Forro PVC','Espelho','Prateleiras','Outros')),
   ativo boolean not null default true,
   created_at timestamptz not null default now()
 );
+
+alter table materiais add column if not exists categoria text not null default 'Outros'
+  check (categoria in ('Portas','Janelas','Box','Forro PVC','Espelho','Prateleiras','Outros'));
 
 insert into materiais (nome, preco_m2) values
   ('Vidro Incolor 6mm', 180.00),
@@ -171,6 +184,33 @@ insert into materiais (nome, preco_m2) values
   ('Espelho 4mm', 120.00),
   ('Espelho 6mm', 190.00),
   ('Película Anti-UV', 85.00)
+on conflict (nome) do nothing;
+
+update materiais set categoria = 'Espelho' where nome ilike '%espelho%' and categoria = 'Outros';
+update materiais set categoria = 'Janelas' where (nome ilike '%vidro%' or nome ilike '%incolor%' or nome ilike '%fumê%' or nome ilike '%verde%') and categoria = 'Outros';
+
+insert into materiais (nome, preco_m2, categoria) values
+  ('Vidro Temperado Incolor 8mm - Porta', 280.00, 'Portas'),
+  ('Vidro Temperado Fumê 8mm - Porta', 320.00, 'Portas'),
+  ('Trilho Superior Porta', 0.00, 'Portas'),
+  ('Trilho Inferior Porta', 0.00, 'Portas'),
+  ('Perfil Alumínio - Porta', 0.00, 'Portas'),
+  ('Vidro Temperado Incolor 6mm - Janela', 180.00, 'Janelas'),
+  ('Vidro Temperado Incolor 8mm - Janela', 220.00, 'Janelas'),
+  ('Vidro Temperado Fumê 6mm - Janela', 210.00, 'Janelas'),
+  ('Vidro Temperado Verde 6mm - Janela', 200.00, 'Janelas'),
+  ('Trilho Superior Janela', 0.00, 'Janelas'),
+  ('Trilho Inferior Janela', 0.00, 'Janelas'),
+  ('Perfil Alumínio - Janela', 0.00, 'Janelas'),
+  ('Vidro Temperado Incolor 8mm - Box', 280.00, 'Box'),
+  ('Vidro Temperado Fumê 8mm - Box', 320.00, 'Box'),
+  ('Ferragem Box', 0.00, 'Box'),
+  ('Perfil Alumínio - Box', 0.00, 'Box'),
+  ('Forro PVC Branco', 0.00, 'Forro PVC'),
+  ('Forro PVC Madeirado', 0.00, 'Forro PVC'),
+  ('Perfil Alumínio - Forro', 0.00, 'Forro PVC'),
+  ('Vidro Temperado Incolor 8mm - Prateleira', 280.00, 'Prateleiras'),
+  ('Suporte Prateleira', 0.00, 'Prateleiras')
 on conflict (nome) do nothing;
 
 -- =========================================================

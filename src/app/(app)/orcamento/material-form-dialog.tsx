@@ -12,10 +12,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
-import type { Material } from "@/lib/types";
+import type { CategoriaMaterial, Material } from "@/lib/types";
+
+const CATEGORIAS: CategoriaMaterial[] = [
+  "Portas",
+  "Janelas",
+  "Box",
+  "Forro PVC",
+  "Espelho",
+  "Prateleiras",
+  "Outros",
+];
 
 export function MaterialFormDialog({
   open,
@@ -31,6 +48,7 @@ export function MaterialFormDialog({
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     nome: "",
+    categoria: "Outros" as CategoriaMaterial,
     descricao: "",
     preco_m2: "",
   });
@@ -40,11 +58,12 @@ export function MaterialFormDialog({
       if (material) {
         setForm({
           nome: material.nome,
+          categoria: material.categoria,
           descricao: material.descricao ?? "",
           preco_m2: String(material.preco_m2 ?? ""),
         });
       } else {
-        setForm({ nome: "", descricao: "", preco_m2: "" });
+        setForm({ nome: "", categoria: "Outros", descricao: "", preco_m2: "" });
       }
     }
   }, [open, material]);
@@ -64,6 +83,7 @@ export function MaterialFormDialog({
     const supabase = createClient();
     const payload = {
       nome: form.nome.trim(),
+      categoria: form.categoria,
       descricao: form.descricao.trim() || null,
       preco_m2: Number(form.preco_m2),
     };
@@ -99,6 +119,25 @@ export function MaterialFormDialog({
               onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))}
               required
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Categoria</Label>
+            <Select
+              value={form.categoria}
+              onValueChange={(v) => setForm((f) => ({ ...f, categoria: v as CategoriaMaterial }))}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CATEGORIAS.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {c}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">

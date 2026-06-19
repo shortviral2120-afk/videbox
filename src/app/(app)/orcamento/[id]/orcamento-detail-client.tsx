@@ -18,17 +18,28 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, CheckCircle2, ExternalLink, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  CheckCircle2,
+  ExternalLink,
+  Loader2,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { ServicoItemFormDialog } from "@/app/(app)/servicos/[id]/servico-item-form-dialog";
 import { GerarPdfButton } from "@/components/gerar-pdf-button";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { faseServicoColor } from "@/lib/status-styles";
+import { loadPerfil } from "@/lib/perfil";
 import { toast } from "sonner";
 
 export function OrcamentoDetailClient({ id }: { id: string }) {
   const [servico, setServico] = useState<Servico | null>(null);
   const [itens, setItens] = useState<ServicoItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [perfilIncompleto, setPerfilIncompleto] = useState(false);
 
   const [itemFormOpen, setItemFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ServicoItem | null>(null);
@@ -52,6 +63,8 @@ export function OrcamentoDetailClient({ id }: { id: string }) {
 
   useEffect(() => {
     load();
+    const perfil = loadPerfil();
+    setPerfilIncompleto(!perfil.nomeEmpresa || !perfil.telefone || !perfil.cnpjCpf);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -136,6 +149,17 @@ export function OrcamentoDetailClient({ id }: { id: string }) {
         <ArrowLeft className="h-4 w-4" />
         Voltar
       </Link>
+
+      {perfilIncompleto && (
+        <Link
+          href="/perfil"
+          className="mb-4 flex items-center gap-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning hover:bg-warning/20 transition-colors"
+        >
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          Complete seu perfil para que o PDF saia com os dados da sua empresa. Clique aqui para
+          preencher →
+        </Link>
+      )}
 
       <PageHeader title={`${clienteNome} — ${servico.titulo}`} />
 

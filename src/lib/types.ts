@@ -78,6 +78,15 @@ export type TipoPostagem =
 
 export type FormatoPostagem = "Reels" | "Carrossel" | "Foto única" | "Story";
 
+export type CategoriaMaterial =
+  | "Portas"
+  | "Janelas"
+  | "Box"
+  | "Forro PVC"
+  | "Espelho"
+  | "Prateleiras"
+  | "Outros";
+
 export type StatusPostagem = "Publicado" | "Agendado" | "Não publicado";
 
 export interface Cliente {
@@ -90,6 +99,10 @@ export interface Cliente {
   valor_orcado: number | null;
   status: StatusCliente;
   observacoes: string | null;
+  endereco: string | null;
+  cidade: string | null;
+  cpf_cnpj: string | null;
+  validade_proposta: string | null;
   created_at: string;
 }
 
@@ -112,7 +125,14 @@ export interface Servico {
   observacoes: string | null;
   created_at: string;
   updated_at: string;
-  clientes?: { nome: string; telefone: string | null } | null;
+  clientes?: {
+    nome: string;
+    telefone: string | null;
+    endereco?: string | null;
+    cidade?: string | null;
+    cpf_cnpj?: string | null;
+    validade_proposta?: string | null;
+  } | null;
 }
 
 export interface ServicoItem {
@@ -138,6 +158,7 @@ export interface Material {
   nome: string;
   descricao: string | null;
   preco_m2: number;
+  categoria: CategoriaMaterial;
   ativo: boolean;
   created_at: string;
 }

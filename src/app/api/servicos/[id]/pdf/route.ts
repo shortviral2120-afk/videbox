@@ -7,11 +7,16 @@ export async function GET(request: Request, { params }: { params: { id: string }
   const supabase = createClient();
   const { searchParams } = new URL(request.url);
   const nomeEmpresa = searchParams.get("nomeEmpresa") ?? undefined;
+  const slogan = searchParams.get("slogan") ?? undefined;
   const telefoneEmpresa = searchParams.get("telefoneEmpresa") ?? undefined;
+  const enderecoEmpresa = searchParams.get("enderecoEmpresa") ?? undefined;
+  const cidadeEmpresa = searchParams.get("cidadeEmpresa") ?? undefined;
+  const cnpjEmpresa = searchParams.get("cnpjEmpresa") ?? undefined;
+  const percentualEntrada = Number(searchParams.get("percentualEntrada") ?? "70") || 70;
 
   const { data: servico } = await supabase
     .from("servicos")
-    .select("*, clientes(nome, telefone)")
+    .select("*, clientes(nome, telefone, endereco, cidade, cpf_cnpj, validade_proposta)")
     .eq("id", params.id)
     .single();
 
@@ -30,7 +35,12 @@ export async function GET(request: Request, { params }: { params: { id: string }
       servico: servico as unknown as Servico,
       itens: (itens ?? []) as unknown as ServicoItem[],
       nomeEmpresa,
+      slogan,
       telefoneEmpresa,
+      enderecoEmpresa,
+      cidadeEmpresa,
+      cnpjEmpresa,
+      percentualEntrada,
     })
   );
 

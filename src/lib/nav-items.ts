@@ -19,18 +19,18 @@ export interface NavItem {
 
 export const navItems: NavItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/clientes", label: "Clientes", icon: Users },
+  { href: "/orcamento", label: "Orçamento", icon: FileText },
   { href: "/servicos", label: "Serviços", icon: ClipboardList },
   { href: "/cronograma", label: "Cronograma", icon: Calendar },
-  { href: "/orcamento", label: "Orçamento", icon: FileText },
   { href: "/financeiro", label: "Financeiro", icon: DollarSign },
   { href: "/fornecedores", label: "Fornecedores", icon: Truck },
+  { href: "/clientes", label: "Clientes", icon: Users },
   { href: "/whatsapp", label: "WhatsApp", icon: MessageCircle },
   { href: "/perfil", label: "Perfil", icon: User },
 ];
 
 export const primaryNavItems: NavItem[] = navItems.filter((item) =>
-  ["/", "/servicos", "/cronograma", "/financeiro"].includes(item.href)
+  ["/", "/orcamento", "/servicos", "/cronograma"].includes(item.href)
 );
 
 export const moreNavItems: NavItem[] = navItems.filter(
